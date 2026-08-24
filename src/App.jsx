@@ -653,3 +653,57 @@ export default function App() {
           <h1 style={{ color: "white", fontSize: 18, fontWeight: 800 }}>{tab === "thread" ? activeUser.username : "Smart Chat"}</h1>
         </div>
         {tab !== "thread" && (
+        <div style={{ display: "flex", alignItems: "center", borderTop: "1px solid #E8E4DC", background: "white", position: "relative" }}>
+          <button onClick={() => setTab("home")} style={navBtn(tab === "home")}><Home size={20} /><span style={{ fontSize: 11 }}>Home</span></button>
+          <button onClick={() => { setTab("reels"); setReelIndex(0); setReelFrame(0); }} style={navBtn(tab === "reels")}><Film size={20} /><span style={{ fontSize: 11 }}>Reels</span></button>
+          <button onClick={() => setShowComposer(true)} style={{ width: 48, height: 48, borderRadius: "50%", background: CORAL, border: "none", display: "flex", alignItems: "center", justifyContent: "center", marginTop: -24, boxShadow: "0 4px 10px rgba(0,0,0,0.2)" }}>
+            <Plus size={22} color="white" />
+          </button>
+          <button onClick={() => setTab("search")} style={navBtn(tab === "search")}><Search size={20} /><span style={{ fontSize: 11 }}>Search</span></button>
+          <button onClick={() => setTab("profile")} style={navBtn(tab === "profile")}><UserIcon size={20} /><span style={{ fontSize: 11 }}>Profile</span></button>
+        </div>
+      )}
+
+      {viewingStory && (
+        <div onClick={() => setViewingStory(null)} style={{ position: "fixed", inset: 0, zIndex: 50, background: "black", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ position: "absolute", top: 16, left: 16, right: 16, display: "flex", alignItems: "center", gap: 8 }}>
+            <Avatar profile={{ ...profileFor(viewingStory.uid), avatarURL: viewingStory.imageURL }} size={30} />
+            <span style={{ color: "white", fontWeight: 700, fontSize: 14 }}>{viewingStory.username}</span>
+            <button onClick={() => setViewingStory(null)} style={{ marginLeft: "auto", background: "none", border: "none" }}><X size={20} color="white" /></button>
+          </div>
+          <img src={viewingStory.imageURL} alt="story" style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain" }} />
+        </div>
+      )}
+
+      {showComposer && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(27,31,59,0.6)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div style={{ width: "100%", maxWidth: 420, borderRadius: "24px 24px 0 0", padding: 16, background: "white" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 800, color: INK }}>Nayi Share</h2>
+              <button onClick={closeComposer} style={{ background: "none", border: "none" }}><X size={20} color={SLATE} /></button>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <button onClick={() => { setComposeType("post"); setImages([]); }} style={{ flex: 1, borderRadius: 12, padding: "8px 0", fontWeight: 700, fontSize: 14, border: "none", background: composeType === "post" ? CORAL : CREAM, color: composeType === "post" ? "white" : INK }}>Photo Post</button>
+              <button onClick={() => { setComposeType("reel"); setImages([]); }} style={{ flex: 1, borderRadius: 12, padding: "8px 0", fontWeight: 700, fontSize: 14, border: "none", background: composeType === "reel" ? CORAL : CREAM, color: composeType === "reel" ? "white" : INK }}>Reel (slideshow)</button>
+            </div>
+            {images.length > 0 ? (
+              <div style={{ display: "flex", gap: 8, overflowX: "auto", marginBottom: 12 }}>
+                {images.map((img, i) => <img key={i} src={img} alt="preview" style={{ height: 112, width: 112, objectFit: "cover", borderRadius: 12 }} />)}
+              </div>
+            ) : (
+              <button onClick={() => fileInputRef.current?.click()} style={{ width: "100%", borderRadius: 16, padding: "32px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, marginBottom: 12, background: CREAM, border: `1.5px dashed ${SLATE}` }}>
+                <ImageIcon size={24} color={SLATE} />
+                <span style={{ color: SLATE, fontSize: 14 }}>{composeType === "reel" ? "2-6 photos chunein" : "Photo chunein"}</span>
+              </button>
+            )}
+            <input ref={fileInputRef} type="file" accept="image/*" multiple={composeType === "reel"} onChange={handleFiles} style={{ display: "none" }} />
+            <textarea value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Caption likhein..." rows={2} style={{ width: "100%", borderRadius: 16, padding: 12, marginBottom: 12, border: "none", background: CREAM, outline: "none", resize: "none", fontSize: 14 }} />
+            <button onClick={submitPost} disabled={posting || (images.length === 0 && !caption.trim())} style={{ width: "100%", borderRadius: 16, padding: "12px 0", background: CORAL, color: "white", fontWeight: 700, border: "none", opacity: posting ? 0.7 : 1 }}>
+              {posting ? "Uploading..." : "Share Karein"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
