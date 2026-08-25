@@ -35,6 +35,7 @@ function timeAgo(ts) {
   return `${Math.floor(diff / 86400)}d`;
 }
 function tsOf(data) {
+  // Firestore Timestamp -> ms, fallback to raw number
   if (!data) return 0;
   if (typeof data === "number") return data;
   if (data.toMillis) return data.toMillis();
@@ -253,6 +254,7 @@ export default function App() {
     setAuthError(""); setBusy(true);
     try {
       await confirmationRef.current.confirm(otpValue.trim());
+      // onAuthStateChanged handles the rest (profile lookup / setUsername step)
     } catch (e) {
       setAuthError("OTP galat hai ya expire ho gaya");
     } finally {
@@ -653,6 +655,199 @@ export default function App() {
           <h1 style={{ color: "white", fontSize: 18, fontWeight: 800 }}>{tab === "thread" ? activeUser.username : "Smart Chat"}</h1>
         </div>
         {tab !== "thread" && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Avatar profile={profile} size={30} />
+            <button onClick={logOut} style={{ background: "none", border: "none", color: "#B8BCD9", fontSize: 12 }}>Logout</button>
+          </div>
+        )}
+      </div>
+
+      {error && <div style={{ background: "#FDE8E6", color: CORAL, textAlign: "center", fontSize: 12, padding: "6px 0" }}>{error}</div>}
+
+      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        {tab === "home" ? (
+          <div style={{ flex: 1, overflowY: "auto" }}>
+            <div style={{ display: "flex", gap: 12, padding: 12, overflowX: "auto", background: "white" }}>
+              <button onClick={() => storyFileRef.current?.click()} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", flexShrink: 0 }}>
+                <div style={{ borderRadius: "50%", padding: 2, border: myStory ? `2px solid ${MINT}` : `2px dashed ${SLATE}` }}>
+                  <Avatar profile={myStory ? { ...profile, avatarURL: myStory.imageURL } : profile} size={54} />
+                </div>
+                <span style={{ fontSize: 11, color: SLATE }}>Aapki Story</span>
+              </button>
+              <input ref={storyFileRef} type="file" accept="image/*" onChange={handleStoryFile} style={{ display: "none" }} />
+              {otherStoryUsers.map((s) => (
+                <button key={s.uid} onClick={() => setViewingStory(s)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", flexShrink: 0 }}>
+                  <div style={{ borderRadius: "50%", padding: 2, border: `2px solid ${CORAL}` }}>
+                    <Avatar profile={{ ...profileFor(s.uid), avatarURL: s.imageURL }} size={54} />
+                  </div>
+                  <span style={{ fontSize: 11, color: SLATE, maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.username}</span>
+                </button>
+              ))}
+            </div>
+
+            <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 16 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", color: SLATE }}>Suggestions</p>
+              {feedPosts.length === 0 && <p style={{ textAlign: "center", color: SLATE, fontSize: 14, marginTop: 24 }}>Koi post nahi mili.</p>}
+              {feedPosts.map((p) => (
+                <div key={p.id} style={{ background: "white", borderRadius: 16, overflow: "hidden" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px" }}>
+                    <Avatar profile={profileFor(p.uid)} size={28} />
+                    <div style={{ fontWeight: 700, fontSize: 14, color: INK }}>{p.username}</div>
+                    <div style={{ marginLeft: "auto", fontSize: 12, color: SLATE }}>{timeAgo(p.ts)}</div>
+                  </div>
+                  {p.images?.[0] && <img src={p.images[0]} alt="post" style={{ width: "100%", maxHeight: 384, objectFit: "cover" }} />}
+                  <div style={{ padding: "10px 12px", display: "flex", gap: 8 }}>
+                    <button onClick={() => toggleLike(p)} style={{ background: "none", border: "none" }}><Heart size={18} color={CORAL} /></button>
+                    <div style={{ fontSize: 14, color: INK }}>
+                      {p.caption}
+                      <div style={{ fontSize: 12, color: SLATE, marginTop: 4 }}>{p.likes || 0} pasand</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : tab === "thread" ? (
+          <>
+            <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "16px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+              {messages.map((m) => {
+                const mine = m.from === profile.uid;
+                return (
+                  <div key={m.id} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start" }}>
+                    <div style={{ maxWidth: "75%", borderRadius: 16, padding: "8px 14px", background: mine ? CORAL : "white", color: mine ? "white" : INK }}>
+                      <div style={{ fontSize: 14 }}>{m.text}</div>
+                      <div style={{ fontSize: 10, marginTop: 4, textAlign: "right", color: mine ? "rgba(255,255,255,0.75)" : SLATE }}>{timeAgo(m.ts)}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ padding: 12, display: "flex", gap: 8, borderTop: "1px solid #E8E4DC", background: "white" }}>
+              <input
+                value={msgInput} onChange={(e) => setMsgInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                placeholder="Message likhein..." style={{ flex: 1, borderRadius: 999, padding: "10px 16px", border: "none", background: CREAM, outline: "none", fontSize: 14 }}
+              />
+              <button onClick={sendMessage} style={{ width: 40, height: 40, borderRadius: "50%", background: CORAL, border: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Send size={16} color="white" />
+              </button>
+            </div>
+          </>
+        ) : tab === "search" ? (
+          <>
+            <div style={{ padding: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, borderRadius: 999, padding: "8px 14px", background: "white" }}>
+                <Search size={15} color={SLATE} />
+                <input value={peopleSearch} onChange={(e) => setPeopleSearch(e.target.value)} placeholder="Username dhoondhein..." style={{ flex: 1, border: "none", outline: "none", background: "none", fontSize: 14 }} />
+              </div>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "0 12px 12px" }}>
+              {searchQuery ? (
+                searchResults.map((u) => {
+                  const req = requestBetween(u.uid);
+                  return (
+                    <div key={u.uid} style={{ display: "flex", alignItems: "center", gap: 10, background: "white", borderRadius: 16, padding: "10px 12px", marginBottom: 6 }}>
+                      <Avatar profile={u} size={40} />
+                      <div style={{ flex: 1, fontWeight: 700, fontSize: 14, color: INK }}>{u.username}</div>
+                      {!req && (
+                        <button onClick={() => sendRequest(u)} style={{ display: "flex", alignItems: "center", gap: 4, borderRadius: 999, padding: "6px 12px", background: CORAL, border: "none", color: "white", fontSize: 12, fontWeight: 700 }}>
+                          <UserPlus size={13} /> Request
+                        </button>
+                      )}
+                      {req?.status === "pending" && req.from === profile.uid && <span style={{ display: "flex", alignItems: "center", gap: 4, color: SLATE, fontSize: 12 }}><Clock size={13} /> Requested</span>}
+                      {req?.status === "pending" && req.to === profile.uid && (
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button onClick={() => respondRequest(req, true)} style={{ width: 32, height: 32, borderRadius: "50%", background: MINT, border: "none" }}><Check size={15} color="white" /></button>
+                          <button onClick={() => respondRequest(req, false)} style={{ width: 32, height: 32, borderRadius: "50%", background: "#E8E4DC", border: "none" }}><X size={15} color={SLATE} /></button>
+                        </div>
+                      )}
+                      {req?.status === "accepted" && (
+                        <button onClick={() => openThread(u)} style={{ borderRadius: 999, padding: "6px 12px", background: MINT, border: "none", color: "white", fontSize: 12, fontWeight: 700 }}>Chat</button>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <>
+                  {incomingRequests.length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                      <p style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", color: SLATE, marginBottom: 8 }}>Requests</p>
+                      {incomingRequests.map((r) => (
+                        <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "white", borderRadius: 16, padding: "10px 12px", marginBottom: 6 }}>
+                          <Avatar profile={profileFor(r.from)} size={40} />
+                          <div style={{ flex: 1, fontWeight: 700, fontSize: 14, color: INK }}>{r.fromUsername}</div>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button onClick={() => respondRequest(r, true)} style={{ width: 32, height: 32, borderRadius: "50%", background: MINT, border: "none" }}><Check size={15} color="white" /></button>
+                            <button onClick={() => respondRequest(r, false)} style={{ width: 32, height: 32, borderRadius: "50%", background: "#E8E4DC", border: "none" }}><X size={15} color={SLATE} /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", color: SLATE, marginBottom: 8 }}>Chats</p>
+                  {acceptedChats.length === 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, marginTop: 24 }}>
+                      <UsersIcon size={22} color={SLATE} />
+                      <p style={{ color: SLATE, fontSize: 14, textAlign: "center" }}>Username search karke chat request bhejein.</p>
+                    </div>
+                  )}
+                  {acceptedChats.map((u) => (
+                    <button key={u.uid} onClick={() => openThread(u)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, background: "white", borderRadius: 16, padding: "10px 12px", marginBottom: 6, border: "none", textAlign: "left" }}>
+                      <Avatar profile={profileFor(u.uid)} size={40} />
+                      <div style={{ fontWeight: 700, fontSize: 14, color: INK }}>{u.username}</div>
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          </>
+        ) : tab === "profile" ? (
+          <div style={{ flex: 1, overflowY: "auto", padding: "24px 16px" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <button onClick={() => avatarFileRef.current?.click()} style={{ position: "relative", background: "none", border: "none" }}>
+                <Avatar profile={profile} size={88} />
+                <div style={{ position: "absolute", bottom: 0, right: 0, width: 28, height: 28, borderRadius: "50%", background: CORAL, border: `2px solid ${CREAM}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Camera size={13} color="white" />
+                </div>
+              </button>
+              <input ref={avatarFileRef} type="file" accept="image/*" onChange={handleAvatarFile} style={{ display: "none" }} />
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: INK, marginTop: 12 }}>{name}</h2>
+              <p style={{ fontSize: 12, color: SLATE, marginTop: 4 }}>{myPosts.length} posts</p>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4, marginTop: 24 }}>
+              {myPosts.map((p) => (
+                <div key={p.id} style={{ aspectRatio: "1", borderRadius: 6, overflow: "hidden", background: "#E8E4DC" }}>
+                  {p.images?.[0] && <img src={p.images[0]} alt="post" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", background: INK }}>
+            {reels.length === 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                <Film size={24} color="#7A7FA6" />
+                <p style={{ color: "#B8BCD9", fontSize: 14 }}>Koi reel nahi hai abhi.</p>
+              </div>
+            ) : (
+              <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <img src={currentReel.images[reelFrame % currentReel.images.length]} alt="reel" style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain" }} />
+                <div style={{ position: "absolute", bottom: 16, left: 16, right: 64, color: "white" }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{currentReel.username}</div>
+                  {currentReel.caption && <div style={{ fontSize: 14 }}>{currentReel.caption}</div>}
+                </div>
+                <button onClick={() => toggleLike(currentReel)} style={{ position: "absolute", bottom: 24, right: 16, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                  <Heart size={26} color={CORAL} />
+                  <span style={{ color: "white", fontSize: 12 }}>{currentReel.likes || 0}</span>
+                </button>
+                <button onClick={() => { setReelIndex((i) => (i - 1 + reels.length) % reels.length); setReelFrame(0); }} style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "33%", background: "none", border: "none" }} />
+                <button onClick={() => { setReelIndex((i) => (i + 1) % reels.length); setReelFrame(0); }} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "33%", background: "none", border: "none" }} />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {tab !== "thread" && (
         <div style={{ display: "flex", alignItems: "center", borderTop: "1px solid #E8E4DC", background: "white", position: "relative" }}>
           <button onClick={() => setTab("home")} style={navBtn(tab === "home")}><Home size={20} /><span style={{ fontSize: 11 }}>Home</span></button>
           <button onClick={() => { setTab("reels"); setReelIndex(0); setReelFrame(0); }} style={navBtn(tab === "reels")}><Film size={20} /><span style={{ fontSize: 11 }}>Reels</span></button>
